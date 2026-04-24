@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="stepper">
+    <div id="step1" class="step active">1 업로드</div>
+    <div id="step2" class="step">2 AI 분석</div>
+    <div id="step3" class="step">3 내용 확인</div>
+    <div id="step4" class="step">4 등록 완료</div>
+  </div>
+</div>
+
+<div class="dataset-layout">
+  <div>
+    <div class="card">
+      <h3>파일 업로드</h3>
+      <input id="fileInput" type="file" accept=".csv,.json" style="display:none" onchange="analyzeData()">
+      <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">⇪</div>
+        <p><strong>파일을 끌어다 놓거나 클릭해서 선택</strong></p>
+        <p>CSV, JSON</p>
+      </div>
+      <button class="btn secondary" onclick="loadSampleData()">sample_telemetry.json 불러오기</button>
+      <p id="analyzeStatus"></p>
+    </div>
+
+    <div class="card">
+      <h3>사용 조건 설정</h3>
+      <label>누가 쓸 수 있나요?</label>
+      <select id="ownerGroup">
+        <option value="우리 그룹만">우리 그룹만</option>
+        <option value="파트너 기업">파트너 기업</option>
+      </select>
+      <label>어떻게 쓸 수 있나요?</label>
+      <div class="scope-buttons">
+        <button type="button" class="scope-btn active" data-scope="조회만" onclick="setScope(this)">조회만</button>
+        <button type="button" class="scope-btn" data-scope="다운로드" onclick="setScope(this)">다운로드</button>
+        <button type="button" class="scope-btn" data-scope="AI 학습" onclick="setScope(this)">AI 학습</button>
+      </div>
+      <input id="usageScope" type="hidden" value="조회만">
+      <label>사용 기간 (일)</label>
+      <input id="usageDays" type="range" min="7" max="90" value="30" oninput="document.getElementById('daysText').textContent=this.value + '일'">
+      <div id="daysText">30일</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>AI 분석한 내용</h3>
+      <label>데이터 이름</label>
+      <input id="datasetName" placeholder="분석 후 자동 입력">
+      <label>데이터 설명</label>
+      <textarea id="desc" rows="3" placeholder="분석 후 자동 입력"></textarea>
+
+      <p><strong>포함 정보</strong></p>
+      <div id="columns"></div>
+
+      <p><strong>데이터 의미</strong></p>
+      <div id="meaning"></div>
+
+      <p><strong>활용 가능한 AI</strong></p>
+      <div id="models"></div>
+
+      <div class="grid">
+        <button class="btn secondary" onclick="setEditable(true)">수정하기</button>
+        <button class="btn" onclick="registerData()">등록하기</button>
+      </div>
+      <p id="registerResult"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+let analyzedModels = [];
+let currentStep = 1;
+
+function setStep(step) {
+  currentStep = step;
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.classList.remove("active", "done");
+    if (i < step) el.classList.add("done");
+    if (i === step) el.classList.add("active");
+  }
+}
+
+function fillAnalyzeResult(data) {
+  analyzedModels = data.ai_models.map(v => v.name);
+  document.getElementById("datasetName").value = data.name;
+  document.getElementById("desc").value = data.description;
+  document.getElementById("columns").innerHTML = data.fields.map(v => `<span class="tag">${v}</span>`).join("");
+  document.getElementById("meaning").innerHTML = data.mapped_meanings.map(v => `<span class="tag">${v}</span>`).join("");
+  document.getElementById("models").innerHTML = data.ai_models.map(v =>
+    `<p>${v.name} <span class="${v.status.includes('바로') ? 'badge-ok' : 'badge-warn'}">${v.status}</span></p>`
+  ).join("");
+  setStep(3);
+}
+
+function setScope(button) {
+  document.querySelectorAll(".scope-btn").forEach((el) => el.classList.remove("active"));
+  button.classList.add("active");
+  document.getElementById("usageScope").value = button.dataset.scope;
+}
+
+async function analyzeData() {
+  const input = document.getElementById("fileInput");
+  const file = input.files[0];
+  const status = document.getElementById("analyzeStatus");
+  if (!file) {
+    status.textContent = "파일을 먼저 선택해 주세요.";
+    return;
+  }
+  status.textContent = "자동 분석 진행중...";
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const res = await fetch("/ui/api/analyze-upload", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "분석 실패");
+    fillAnalyzeResult(data);
+    status.textContent = "분석이 완료되었습니다.";
+  } catch (e) {
+    status.textContent = `분석 실패: ${e.message}`;
+  }
+}
+
+async function loadSampleData() {
+  const status = document.getElementById("analyzeStatus");
+  status.textContent = "샘플 데이터 분석중...";
+  try {
+    const res = await fetch("/ui/api/analyze-sample");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "샘플 분석 실패");
+    fillAnalyzeResult(data);
+    status.textContent = "sample_telemetry.json 분석 완료";
+  } catch (e) {
+    status.textContent = `실패: ${e.message}`;
+  }
+}
+
+function setEditable(enabled) {
+  document.getElementById("datasetName").readOnly = !enabled;
+  document.getElementById("desc").readOnly = !enabled;
+  if (enabled) setStep(3);
+}
+
+async function registerData() {
+  const name = document.getElementById("datasetName").value;
+  const ownerGroup = document.getElementById("ownerGroup").value;
+  const usageScope = document.getElementById("usageScope").value;
+  const usageDays = Number(document.getElementById("usageDays").value);
+  const desc = document.getElementById("desc").value;
+  const fields = Array.from(document.querySelectorAll("#columns .tag")).map(t => t.textContent);
+  const result = document.getElementById("registerResult");
+  if (!name || fields.length === 0) {
+    result.textContent = "먼저 파일 분석을 완료해 주세요.";
+    return;
+  }
+  result.textContent = "등록 중...";
+  const payload = {
+    name,
+    description: desc || "자동 등록 데이터",
+    fields,
+    owner_group: ownerGroup,
+    usage_scope: usageScope,
+    usage_days: usageDays,
+    ai_models: analyzedModels
+  };
+  try {
+    const res = await fetch("/ui/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "등록 실패");
+    result.textContent = `등록 완료: ${data.asset_id} (${data.saved_to})`;
+    setStep(4);
+  } catch (e) {
+    result.textContent = `등록 실패: ${e.message}`;
+  }
+}
+</script>
+{% endblock %}

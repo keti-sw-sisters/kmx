@@ -1,0 +1,9 @@
+{
+  "temperature": "mx:MachineTemperature",
+  "vibration": "mx:MachineVibration",
+  "defect_rate": "mx:DefectRate",
+  "inspection_score": "mx:InspectionScore",
+  "energy_kwh": "mx:EnergyConsumption",
+  "line": "mx:ProductionLine",
+  "machine_id": "mx:MachineIdentifier"
+}

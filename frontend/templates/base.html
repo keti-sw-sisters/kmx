@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title or "KMX 플랫폼" }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>KMX 데이터 플랫폼</h1>
+    <nav>
+      <a href="/dashboard">대시보드</a>
+      <a href="/datasets">데이터 등록/검색</a>
+      <a href="/identity">계정/신원</a>
+      <a href="/contracts">사용 설정</a>
+      <a href="/agents">자동화 도우미</a>
+      <a href="/logs">사용 내역/정산</a>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

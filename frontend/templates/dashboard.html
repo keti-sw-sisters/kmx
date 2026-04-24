@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-kpi">
+  <div class="card kpi-card">
+    <div class="kpi-title">전체 데이터 자산</div>
+    <div class="kpi" id="kpiTotal">0</div>
+    <div class="kpi-sub">실시간 업데이트</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-title">텔레메트리 자산</div>
+    <div class="kpi" id="kpiTelemetry">0</div>
+    <div class="kpi-sub">온도/압력/진동 포함</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-title">사용 승인 대기</div>
+    <div class="kpi" id="kpiPending">0</div>
+    <div class="kpi-sub">확인 필요</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-title">이번 주 AI 실행</div>
+    <div class="kpi" id="kpiAi">0</div>
+    <div class="kpi-sub">예지보전/품질분석</div>
+  </div>
+</div>
+
+<div class="dashboard-main">
+  <div class="card">
+    <h3>최근 교환 이력</h3>
+    <ul class="history-list" id="recentEvents"></ul>
+  </div>
+
+  <div class="card">
+    <h3>텔레메트리 상태</h3>
+    <div id="signalBars"></div>
+    <h4>사용 승인 대기 중</h4>
+    <div id="pendingItems"></div>
+  </div>
+</div>
+
+<div class="card ai-quick-card">
+  <div class="ai-head">
+    <div>
+      <h3 class="ai-title">AI 빠른 실행</h3>
+      <p class="muted-text ai-sub">설비 데이터를 기반으로 AI 결과를 빠르게 확인하세요.</p>
+    </div>
+    <div class="ai-head-right">
+      <div id="aiModelStatus" class="ai-status-chip">모델 상태 확인 중...</div>
+      <div id="aiMeta" class="ai-source-chip">모델 소스: -</div>
+    </div>
+  </div>
+
+  <div class="ai-control-bar">
+    <div>
+      <label>선택 데이터</label>
+      <select id="aiDataset"></select>
+    </div>
+    <div>
+      <label>선택 모델</label>
+      <select id="aiModel">
+        <option value="predictive-maintenance">예지보전</option>
+        <option value="quality-inspection">품질분석</option>
+        <option value="process-optimization">공정최적화</option>
+      </select>
+    </div>
+    <button class="btn ai-run-btn" onclick="runAi()">AI 실행</button>
+  </div>
+
+  <div id="aiResult" class="ai-result-panel">
+    <div class="ai-result-empty">실행하면 진단 요약/상세 상태/알람이 표시됩니다.</div>
+  </div>
+</div>
+<script>
+const barClasses = ["bar-blue", "bar-green", "bar-orange", "bar-red"];
+let aiOptionMap = {};
+
+const iconSet = {
+  temp: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 10v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  vibration: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h3l2-4 4 8 3-6 2 2h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  power: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 6 13h5l-1 9 8-12h-5l0-8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+  status: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`,
+  alarm: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a5 5 0 0 0-5 5v3l-2 3h14l-2-3V9a5 5 0 0 0-5-5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 18a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  warning: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 20h18L12 4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9v5M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  ok: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7 10 17l-5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+};
+
+function eventDot(type) {
+  if (type === "등록") return "green";
+  if (type === "전송") return "blue";
+  if (type === "경고") return "yellow";
+  return "blue";
+}
+
+async function loadSummary() {
+  try {
+    const res = await fetch("/ui/api/dashboard-summary");
+    const data = await res.json();
+    document.getElementById("kpiTotal").textContent = data.kpi.total_assets;
+    document.getElementById("kpiTelemetry").textContent = data.kpi.telemetry_assets;
+    document.getElementById("kpiPending").textContent = data.kpi.pending_approvals;
+    document.getElementById("kpiAi").textContent = data.kpi.ai_runs;
+
+    const ul = document.getElementById("recentEvents");
+    ul.innerHTML = data.recent_events.map((row) => `
+      <li class="history-item">
+        <div><span class="dot ${eventDot(row.type)}"></span>${row.message}</div>
+        <div>${row.time}</div>
+      </li>
+    `).join("");
+
+    const bars = document.getElementById("signalBars");
+    bars.innerHTML = data.signal_bars.map((row, idx) => `
+      <div class="asset-row">
+        <div class="asset-name">${row.label}</div>
+        <div class="bar-track"><div class="bar-fill ${barClasses[idx % barClasses.length]}" style="width:${row.value}%"></div></div>
+        <div>${row.value}%</div>
+      </div>
+    `).join("");
+
+    const pending = document.getElementById("pendingItems");
+    pending.innerHTML = data.pending_items.length
+      ? data.pending_items.map((item) => {
+          const actionButtons = item.source === "memory"
+            ? `<button class="btn ghost-btn" onclick="decideRequest('${item.request_id}', 'approve')">승인</button>
+               <button class="btn ghost-btn" onclick="decideRequest('${item.request_id}', 'reject')">거절</button>`
+            : "";
+          return `<p>${item.text} <span class="badge-warn">검토 필요</span> ${actionButtons}</p>`;
+        }).join("")
+      : "<p>현재 검토 필요한 항목이 없습니다.</p>";
+
+    const aiDataset = document.getElementById("aiDataset");
+    aiOptionMap = {};
+    aiDataset.innerHTML = data.ai_options.map((row, idx) => {
+      const key = `opt-${idx}`;
+      aiOptionMap[key] = row.features;
+      return `<option value="${key}">${row.label}</option>`;
+    }).join("");
+    if (!data.ai_options.length) {
+      aiDataset.innerHTML = `<option value="fallback">로봇 텔레메트리 샘플</option>`;
+      aiOptionMap.fallback = { temperature_c: 65, vibration_mm_s: 3.5, status: "WARNING", alarms: ["ALM-TEMP-HIGH"] };
+    }
+  } catch (e) {
+    document.getElementById("recentEvents").innerHTML = "<li class='history-item'>요약 데이터를 불러오지 못했습니다.</li>";
+    document.getElementById("signalBars").innerHTML = "";
+    document.getElementById("pendingItems").innerHTML = "<p>요약 데이터를 불러오지 못했습니다.</p>";
+  }
+}
+
+async function decideRequest(requestId, action) {
+  try {
+    const res = await fetch(`/ui/api/access-request/${requestId}/decision?action=${action}`, {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "처리 실패");
+    await loadSummary();
+  } catch (e) {
+    alert(`처리 실패: ${e.message}`);
+  }
+}
+
+async function runAi() {
+  const model = document.getElementById("aiModel").value;
+  const selected = document.getElementById("aiDataset").value;
+  const result = document.getElementById("aiResult");
+  result.innerHTML = `<div class="ai-result-empty">AI 실행 중...</div>`;
+  const meta = document.getElementById("aiMeta");
+  meta.innerHTML = "";
+  try {
+    const features = aiOptionMap[selected] || {};
+    const res = await fetch(`/ai/${model}/predict?require_llm=true`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        features
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "분석 실패");
+    const score = data.inference?.score ?? 0;
+    const risk = Number(score).toFixed(2);
+    const issue = score >= 0.6 ? "이상 징후 있음" : "정상 범위";
+    const levelMap = { low: "낮음", medium: "주의", high: "높음", critical: "치명" };
+    const levelKey = data.inference?.alert_level || "low";
+    const levelText = levelMap[levelKey] || "낮음";
+    const causes = Array.isArray(data.inference?.causes) && data.inference.causes.length
+      ? data.inference.causes
+      : (data.inference?.reason || "원인 정보 없음");
+    const causeSources = Array.isArray(data.inference?.cause_sources) && data.inference.cause_sources.length === (Array.isArray(causes) ? causes.length : 1)
+      ? data.inference.cause_sources
+      : (Array.isArray(causes) ? causes.map(() => "RULE") : ["RULE"]);
+    const actions = Array.isArray(data.inference?.actions) && data.inference.actions.length
+      ? data.inference.actions
+      : ["권장 조치 정보가 없습니다."];
+    const actionSources = Array.isArray(data.inference?.action_sources) && data.inference.action_sources.length === actions.length
+      ? data.inference.action_sources
+      : actions.map(() => "RULE");
+    const telemetry = data.inference?.telemetry_summary || {};
+    const chartSeries = Array.isArray(features.chart_series) && features.chart_series.length
+      ? features.chart_series
+      : [{ time: "now", value: Math.round(score * 100) }];
+    const maxIndex = Math.max(chartSeries.length - 1, 1);
+    const historyPoints = chartSeries.map((row, i) => {
+      const x = Math.round((i / maxIndex) * 324);
+      const y = 100 - Math.min(100, Math.max(0, Number(row.value || 0)));
+      return `${x},${y}`;
+    }).join(" ");
+    const chartLabelTime = chartSeries.length ? chartSeries[chartSeries.length - 1].time : "-";
+    const alarmCount = telemetry.alarm_count ?? 0;
+    const chartLabel = telemetry.temperature_c ?? risk;
+    const alertRows = Array.isArray(features.alert_events) && features.alert_events.length
+      ? features.alert_events
+      : (Array.isArray(causes) ? causes : [causes]).slice(0, 3).map((msg, idx) => ({ message: msg, time: `10:${20 + idx}` }));
+    const statusClass = levelKey === "critical" ? "critical" : (levelKey === "high" ? "high" : "low");
+
+    result.innerHTML = `
+      <div class="ai-summary-row">
+        <div class="ai-summary-card strong">
+          <div class="ai-summary-title with-icon"><span class="pulse-dot">~</span>진단 요약</div>
+          <div class="ai-summary-value">${issue}</div>
+          <div class="ai-summary-desc">설비 상태를 주의 깊게 모니터링하세요.</div>
+        </div>
+        <div class="ai-summary-card level-${statusClass}">
+          <div class="ai-summary-title">위험도</div>
+          <div class="ai-score ${statusClass}">${risk}</div>
+          <div class="ai-summary-desc">${levelText}</div>
+        </div>
+        <div class="ai-summary-card level-${statusClass}">
+          <div class="ai-summary-title">경보 단계</div>
+          <div class="ai-summary-value">${levelText}</div>
+          <div class="ai-summary-desc">모델 판정: ${data.inference?.recommendation || "monitor"}</div>
+        </div>
+        <div class="ai-summary-card">
+          <div class="ai-summary-title">핵심 근거</div>
+          <ul class="ai-inline-list">${(Array.isArray(causes) ? causes : [causes]).map((c, idx) => `<li>${c} <span class="src-badge ${causeSources[idx] === "LLM" ? "llm" : "rule"}">${causeSources[idx] === "LLM" ? "LLM" : "RULE"}</span></li>`).join("")}</ul>
+        </div>
+        <div class="ai-summary-card">
+          <div class="ai-summary-title">권장 조치</div>
+          <ul class="ai-inline-list">${actions.map((a, idx) => `<li>${a} <span class="src-badge ${actionSources[idx] === "LLM" ? "llm" : "rule"}">${actionSources[idx] === "LLM" ? "LLM" : "RULE"}</span></li>`).join("")}</ul>
+        </div>
+      </div>
+
+      <div class="ai-bottom-row">
+        <div class="ai-bottom-card">
+          <h4>상세 상태</h4>
+          <div class="ai-pill-grid">
+            <div class="ai-pill temp">
+              <span><i>${iconSet.temp}</i>온도</span>
+              <b>${telemetry.temperature_c ?? "-"}C</b>
+            </div>
+            <div class="ai-pill vibration">
+              <span><i>${iconSet.vibration}</i>진동</span>
+              <b>${telemetry.vibration_mm_s ?? "-"}mm/s</b>
+            </div>
+            <div class="ai-pill power">
+              <span><i>${iconSet.power}</i>전력</span>
+              <b>${telemetry.power_watts ?? "-"}W</b>
+            </div>
+            <div class="ai-pill status">
+              <span><i>${iconSet.status}</i>상태</span>
+              <b>${telemetry.status ?? "-"}</b>
+            </div>
+            <div class="ai-pill alarm">
+              <span><i>${iconSet.alarm}</i>알람</span>
+              <b>${alarmCount}건</b>
+            </div>
+          </div>
+        </div>
+        <div class="ai-bottom-card">
+          <h4>실시간 상태</h4>
+          <svg class="ai-chart" viewBox="0 0 324 110" preserveAspectRatio="none">
+            <polyline points="${historyPoints}" />
+          </svg>
+          <div class="ai-chart-legend">${chartLabel}C (${chartLabelTime})</div>
+        </div>
+        <div class="ai-bottom-card">
+          <div class="ai-alert-head">
+            <h4>최근 알람</h4>
+            <a href="/logs">전체 보기</a>
+          </div>
+          <ul class="ai-alert-list">
+            ${alertRows.length ? alertRows.map((row) => `<li><span><em>${row.message === "특이 징후 없음" ? iconSet.ok : iconSet.warning}</em>${row.message}</span><span>${row.time || "-"}</span></li>`).join("") : `<li><span><em>${iconSet.ok}</em>특이 징후 없음</span><span>-</span></li>`}
+          </ul>
+        </div>
+      </div>
+    `;
+    meta.innerHTML = `<span class="tag">모델 소스: ${data.source || "unknown"}</span>`;
+  } catch (e) {
+    result.innerHTML = `<div class="ai-result-empty">실행 실패: ${e.message}</div>`;
+  }
+}
+
+async function loadModelStatus() {
+  const el = document.getElementById("aiModelStatus");
+  try {
+    const res = await fetch("/ai/model-status");
+    const data = await res.json();
+    if (!data.ollama_available) {
+      el.textContent = `모델 연결 안됨 (${data.model})`;
+      el.className = "ai-status-chip down";
+      return;
+    }
+    el.textContent = data.model_loaded
+      ? `모델 상태: 준비됨 (${data.model})`
+      : `모델 상태: 연결됨, 모델 미로드 (${data.model})`;
+    el.className = data.model_loaded ? "ai-status-chip" : "ai-status-chip warn";
+  } catch (e) {
+    el.textContent = "모델 상태 확인 실패";
+    el.className = "ai-status-chip down";
+  }
+}
+loadSummary();
+loadModelStatus();
+</script>
+{% endblock %}

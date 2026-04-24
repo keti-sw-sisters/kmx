@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  kmx-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: kmx-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/../data
+      - ../ontology:/app/../ontology
+    environment:
+      - PYTHONPATH=/app

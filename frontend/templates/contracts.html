@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>데이터 사용 요청</h2>
+<div class="card">
+  <label>요청자</label>
+  <input id="requester" value="운영팀A">
+  <label>데이터</label>
+  <input id="assetId" value="asset-ald-temperature">
+  <label>사용 목적</label>
+  <select id="purpose">
+    <option>품질 분석</option>
+    <option>설비 상태 점검</option>
+    <option>공정 개선</option>
+  </select>
+  <label>사용 기간</label>
+  <select id="period">
+    <option>7일</option>
+    <option selected>30일</option>
+    <option>90일</option>
+  </select>
+  <label>사용 범위</label>
+  <select id="scope">
+    <option>조회만</option>
+    <option>다운로드</option>
+    <option>AI 학습</option>
+  </select>
+  <button class="btn" onclick="submitRequest()">요청 보내기</button>
+  <p id="contractResult"></p>
+</div>
+<script>
+async function submitRequest() {
+  const requester = document.getElementById("requester").value;
+  const assetId = document.getElementById("assetId").value;
+  const purpose = document.getElementById("purpose").value;
+  const period = document.getElementById("period").value;
+  const scope = document.getElementById("scope").value;
+  const result = document.getElementById("contractResult");
+  result.textContent = "요청 전송 중...";
+  const usageDays = Number((period || "").replace("일", "")) || 30;
+  try {
+    const res = await fetch("/ui/api/access-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requester: requester || "운영팀A",
+        asset_id: assetId,
+        purpose,
+        usage_scope: scope,
+        usage_days: usageDays
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "요청 실패");
+    result.textContent = `요청 완료: 승인요청 번호 ${data.request_id} (대기)`;
+  } catch (e) {
+    result.textContent = `요청 실패: ${e.message}`;
+  }
+}
+</script>
+{% endblock %}
