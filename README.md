@@ -1,6 +1,6 @@
 # KMX Platform — 한국형 Manufacturing-X 데이터 스페이스 플랫폼
 
-> **데이터 스페이스 + AI + 거버넌스 통합 플랫폼 레퍼런스 구현123**  
+> **데이터 스페이스 + AI + 거버넌스 통합 플랫폼 레퍼런스 구현**  
 > Korean Manufacturing-X (KMX) Data Space Platform
 
 ---
