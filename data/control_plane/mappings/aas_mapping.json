@@ -1,0 +1,170 @@
+{
+  "version": "1.0.0",
+  "mappings": [
+    {
+      "dataset_id": "auto-ev-bms-v1",
+      "field_map": [
+        {
+          "field": "soc_pct",
+          "aas_submodel": "BatteryStatus",
+          "aas_property": "StateOfCharge"
+        },
+        {
+          "field": "soh_pct",
+          "aas_submodel": "BatteryStatus",
+          "aas_property": "StateOfHealth"
+        },
+        {
+          "field": "voltage_pack_v",
+          "aas_submodel": "BatteryStatus",
+          "aas_property": "PackVoltage"
+        },
+        {
+          "field": "current_a",
+          "aas_submodel": "BatteryStatus",
+          "aas_property": "PackCurrent"
+        },
+        {
+          "field": "temperature_c",
+          "aas_submodel": "OperationalData",
+          "aas_property": "Temperature"
+        },
+        {
+          "field": "vibration_mm_s",
+          "aas_submodel": "OperationalData",
+          "aas_property": "VibrationVelocity"
+        },
+        {
+          "field": "power_watts",
+          "aas_submodel": "OperationalData",
+          "aas_property": "Power"
+        },
+        {
+          "field": "status",
+          "aas_submodel": "OperationalData",
+          "aas_property": "OperatingState"
+        },
+        {
+          "field": "vin",
+          "aas_submodel": "Traceability",
+          "aas_property": "VehicleVIN"
+        },
+        {
+          "field": "pack_id",
+          "aas_submodel": "Traceability",
+          "aas_property": "BatteryPackIdentifier"
+        }
+      ]
+    },
+    {
+      "dataset_id": "battery-pass-v1",
+      "field_map": [
+        {
+          "field": "battery_id",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "BatteryIdentifier"
+        },
+        {
+          "field": "manufacturer_id",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "ManufacturerBPN"
+        },
+        {
+          "field": "manufacturing_date",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "ManufacturingDate"
+        },
+        {
+          "field": "capacity_kwh",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "RatedCapacity"
+        },
+        {
+          "field": "nominal_voltage_v",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "NominalVoltage"
+        },
+        {
+          "field": "chemistry",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "ChemistryType"
+        },
+        {
+          "field": "soh_at_delivery_pct",
+          "aas_submodel": "HealthDiagnostics",
+          "aas_property": "DeliverySOH"
+        },
+        {
+          "field": "carbon_footprint_kg_co2eq",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "CarbonFootprint"
+        },
+        {
+          "field": "recycled_content_lithium_pct",
+          "aas_submodel": "BatteryPass",
+          "aas_property": "RecycledLithiumContent"
+        },
+        {
+          "field": "catena_cx_digital_twin_id",
+          "aas_submodel": "Traceability",
+          "aas_property": "DigitalTwinIdentifier"
+        }
+      ]
+    },
+    {
+      "dataset_id": "steel-pcf-v1",
+      "field_map": [
+        {
+          "field": "facility_id",
+          "aas_submodel": "OperationalData",
+          "aas_property": "FacilityIdentifier"
+        },
+        {
+          "field": "reporting_year",
+          "aas_submodel": "PCF",
+          "aas_property": "ReportingYear"
+        },
+        {
+          "field": "scope1_emissions_mt",
+          "aas_submodel": "PCF",
+          "aas_property": "Scope1Emissions"
+        },
+        {
+          "field": "scope2_emissions_mt",
+          "aas_submodel": "PCF",
+          "aas_property": "Scope2Emissions"
+        },
+        {
+          "field": "co2_intensity_tcs",
+          "aas_submodel": "PCF",
+          "aas_property": "CarbonIntensityPerTonSteel"
+        },
+        {
+          "field": "energy_consumption_gj",
+          "aas_submodel": "EnergyData",
+          "aas_property": "EnergyConsumptionGJ"
+        },
+        {
+          "field": "crude_steel_prod_mt",
+          "aas_submodel": "OperationalData",
+          "aas_property": "CrudeSteelProduction"
+        },
+        {
+          "field": "blast_furnace_route_pct",
+          "aas_submodel": "OperationalData",
+          "aas_property": "BlastFurnaceRouteShare"
+        },
+        {
+          "field": "eaf_route_pct",
+          "aas_submodel": "OperationalData",
+          "aas_property": "EAFRouteShare"
+        },
+        {
+          "field": "cbam_carbon_content",
+          "aas_submodel": "PCF",
+          "aas_property": "CBAMCarbonContent"
+        }
+      ]
+    }
+  ]
+}

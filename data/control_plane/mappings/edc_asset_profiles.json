@@ -1,0 +1,62 @@
+{
+  "version": "1.0.0",
+  "profiles": [
+    {
+      "profile_id": "edc-auto-telemetry-standard",
+      "dataset_id": "auto-ev-bms-v1",
+      "edc_asset": {
+        "asset_id": "asset:auto:ev:bms:v1",
+        "content_type": "application/json",
+        "endpoint": "/connector/data/transfer?asset_id=asset:auto:ev:bms:v1"
+      },
+      "odrl_policy_template": {
+        "action": "use",
+        "constraints": [
+          { "leftOperand": "purpose", "operator": "eq", "rightOperand": "predictive_maintenance" },
+          { "leftOperand": "elapsedTime", "operator": "lteq", "rightOperand": "P30D" }
+        ],
+        "prohibitions": [
+          { "action": "distribute" }
+        ]
+      }
+    },
+    {
+      "profile_id": "edc-battery-pass-regulatory",
+      "dataset_id": "battery-pass-v1",
+      "edc_asset": {
+        "asset_id": "asset:battery:pass:v1",
+        "content_type": "application/json",
+        "endpoint": "/connector/data/transfer?asset_id=asset:battery:pass:v1"
+      },
+      "odrl_policy_template": {
+        "action": "read",
+        "constraints": [
+          { "leftOperand": "purpose", "operator": "eq", "rightOperand": "regulatory_reporting" },
+          { "leftOperand": "count", "operator": "lteq", "rightOperand": 1000 }
+        ],
+        "prohibitions": [
+          { "action": "modify" }
+        ]
+      }
+    },
+    {
+      "profile_id": "edc-steel-carbon-disclosure",
+      "dataset_id": "steel-pcf-v1",
+      "edc_asset": {
+        "asset_id": "asset:steel:pcf:v1",
+        "content_type": "application/json",
+        "endpoint": "/connector/data/transfer?asset_id=asset:steel:pcf:v1"
+      },
+      "odrl_policy_template": {
+        "action": "use",
+        "constraints": [
+          { "leftOperand": "purpose", "operator": "eq", "rightOperand": "cbam_disclosure" },
+          { "leftOperand": "spatial", "operator": "eq", "rightOperand": "EU" }
+        ],
+        "prohibitions": [
+          { "action": "commercialize" }
+        ]
+      }
+    }
+  ]
+}

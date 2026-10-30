@@ -7,106 +7,65 @@
 
 ## 아키텍처 개요
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    KMX Platform Architecture                     │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   사용자/기업  │  │  AI 에이전트  │  │  외부 커넥터 (연합)   │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
-│         │                 │                       │              │
-│  ╔══════╧═════════════════╧═══════════════════════╧══════╗      │
-│  ║              Identity & Governance Layer               ║      │
-│  ║  ┌──────────┐  ┌──────────┐  ┌───────────────────┐   ║      │
-│  ║  │  DID/VC  │  │  ODRL    │  │  Contract Manager │   ║      │
-│  ║  │  관리     │  │  정책엔진 │  │  계약 관리        │   ║      │
-│  ║  └──────────┘  └──────────┘  └───────────────────┘   ║      │
-│  ╚═══════════════════════════════════════════════════════╝      │
-│                                                                  │
-│  ╔═════════════════════════════════════════════════════════╗     │
-│  ║                 Data Space Layer                         ║     │
-│  ║  ┌──────────────────┐    ┌─────────────────────────┐   ║     │
-│  ║  │   Control Plane   │    │      Data Plane          │   ║     │
-│  ║  │  - 계약 협상      │◄──►│  - P2P 데이터 전송      │   ║     │
-│  ║  │  - 정책 검사      │    │  - 포맷 변환             │   ║     │
-│  ║  │  - 커넥터 라우팅  │    │  - 데이터 주권 보장      │   ║     │
-│  ║  └──────────────────┘    └─────────────────────────┘   ║     │
-│  ╚═════════════════════════════════════════════════════════╝     │
-│                                                                  │
-│  ╔══════════════╗   ╔═══════════════════════════════════════╗    │
-│  ║   AI Layer   ║   ║         Data Intelligence Layer       ║    │
-│  ║  ┌─────────┐ ║   ║  ┌──────────┐  ┌──────────────────┐  ║    │
-│  ║  │예지보전  │ ║   ║  │메타데이터 │  │  벡터 검색 엔진  │  ║    │
-│  ║  │품질검사  │ ║   ║  │자동 추출  │  │  자연어 검색     │  ║    │
-│  ║  │공정최적화│ ║   ║  └──────────┘  └──────────────────┘  ║    │
-│  ║  │수요예측  │ ║   ║  ┌──────────┐  ┌──────────────────┐  ║    │
-│  ║  │에너지최적│ ║   ║  │온톨로지  │  │  DCAT 카탈로그   │  ║    │
-│  ║  └─────────┘ ║   ║  │매핑       │  │  데이터셋 등록   │  ║    │
-│  ╚══════════════╝   ║  └──────────┘  └──────────────────┘  ║    │
-│                     ╚═══════════════════════════════════════╝    │
-│                                                                  │
-│  ╔═════════════════════════════════════════════════════════╗     │
-│  ║              Clearing House (공증/정산)                  ║     │
-│  ║  해시체인 기반 불변 감사로그 · 사용량 기반 자동 정산     ║     │
-│  ╚═════════════════════════════════════════════════════════╝     │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Actors["Actors"]
+    U["사용자/기업"]
+    A["AI 에이전트"]
+    C["외부 커넥터 (연합)"]
+  end
+
+  subgraph Gov["Identity & Governance Layer"]
+    DID["DID/VC 관리"]
+    ODRL["ODRL 정책엔진"]
+    CM["Contract Manager"]
+  end
+
+  subgraph DS["Data Space Layer"]
+    CP["Control Plane<br/>계약 협상 · 정책 검사 · 커넥터 라우팅"]
+    DP["Data Plane<br/>P2P 전송 · 포맷 변환 · 데이터 주권"]
+    CP <--> DP
+  end
+
+  subgraph AI["AI Layer"]
+    AIM["예지보전 · 품질검사 · 공정최적화<br/>수요예측 · 에너지최적"]
+  end
+
+  subgraph DI["Data Intelligence Layer"]
+    META["메타데이터 자동 추출"]
+    VEC["벡터 검색 · 자연어 검색"]
+    ONT["온톨로지 매핑"]
+    CAT["DCAT 카탈로그 · 데이터셋 등록"]
+  end
+
+  subgraph CH["Clearing House"]
+    LOG["해시체인 감사로그 · 사용량 정산"]
+  end
+
+  U --> Gov
+  A --> Gov
+  C --> Gov
+  Gov --> DS
+  DS --> AI
+  DS --> DI
+  DS --> CH
 ```
 
 ---
 
 ## 데이터 흐름 다이어그램
 
-```
-사용자 요청
-    │
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 1: Agent 실행 (선택사항)                                     │
-│   사용자 → 에이전트 권한 위임 (Delegation VC 발급)               │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 2: DID/VC 인증                                               │
-│   - 요청자 DID 확인 (did:kmx:xxxx)                               │
-│   - Verifiable Credential 유효성 검증                             │
-│   - 서명 검증 (Ed25519)                                           │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ ✅ 인증 통과
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 3: Contract 확인 (Control Plane)                             │
-│   - 데이터 사용 계약 존재 여부 확인                               │
-│   - 계약 상태 확인 (ACTIVE)                                       │
-│   - 계약 만료 여부 확인                                           │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ ✅ 계약 유효
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 4: ODRL 정책 검사                                            │
-│   - 요청 행위 (use/read/distribute) 허용 여부                     │
-│   - 제약 조건 평가 (시간, 목적, 횟수)                             │
-│   - Prohibition 우선 검사                                         │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ ✅ 정책 허용
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 5: Data Plane 데이터 전송                                    │
-│   - P2P 직접 전송 (중앙 저장 없음)                                │
-│   - 포맷 변환 (JSON/CSV)                                          │
-│   - 페이로드 해시 생성                                             │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 6: Clearing House 로그 기록                                  │
-│   - 해시체인 로그 생성                                             │
-│   - 이전 로그와 연결 (위변조 방지)                                 │
-│   - 사용량 정산 데이터 누적                                        │
-└─────────────────────────────────────────────────────────────────┘
-                         │
-    ▼
-          응답 반환 (데이터 + 전송 ID + 해시)
+```mermaid
+flowchart TD
+  R["사용자 요청"] --> S1
+
+  S1["Step 1: Agent 실행 (선택)<br/>Delegation VC 발급"] --> S2
+  S2["Step 2: DID/VC 인증<br/>DID 확인 · VC 검증 · Ed25519 서명"] -->|인증 통과| S3
+  S3["Step 3: Contract 확인<br/>계약 존재 · ACTIVE · 만료 여부"] -->|계약 유효| S4
+  S4["Step 4: ODRL 정책 검사<br/>행위 허용 · 제약 평가 · Prohibition"] -->|정책 허용| S5
+  S5["Step 5: Data Plane 전송<br/>P2P · JSON/CSV 변환 · 페이로드 해시"] --> S6
+  S6["Step 6: Clearing House 기록<br/>해시체인 · 위변조 방지 · 정산"] --> OUT
+  OUT["응답 반환<br/>데이터 + 전송 ID + 해시"]
 ```
 
 ---
@@ -190,6 +149,29 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # http://localhost:8000/docs
 ```
 
+### Windows PowerShell 안정 실행 런북 (문제 재발 시)
+
+```powershell
+# 0) backend로 이동
+cd C:\Users\keti\OneDrive\문서\GitHub\kmx\backend
+
+# 1) 가상환경 생성 (최초 1회)
+py -3 -m venv .venv
+
+# 2) 가상환경 python으로 의존성 설치 (activate 없이도 가능)
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# 3) 서버 실행 (권장: 127.0.0.1 바인딩)
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+체크포인트:
+
+- `.\.venv\Scripts\python.exe` 경로 오류가 나면 현재 위치가 `backend`인지 먼저 확인합니다.
+- `http://127.0.0.1:8000/docs`가 아닌 다른 화면이 뜨면 8000 포트를 다른 앱이 점유한 상태일 수 있습니다.
+- 점유 확인: `netstat -ano | findstr :8000`
+
 ### 방법 2: Docker Compose (운영 권장)
 
 ```bash
@@ -218,74 +200,101 @@ python3 test_core.py
 ### 베이스 URL: `http://localhost:8000/api/v1`
 
 #### 🔐 Identity (DID/VC)
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/identity/did` | DID 생성 |
-| GET | `/identity/did/{did}` | DID 조회 |
-| POST | `/identity/vc` | VC 발급 |
-| GET | `/identity/vc/{vc_id}/verify` | VC 검증 |
-| POST | `/identity/vc/delegate` | 에이전트 위임 VC 발급 |
+
+
+| Method | Path                          | 설명            |
+| ------ | ----------------------------- | ------------- |
+| POST   | `/identity/did`               | DID 생성        |
+| GET    | `/identity/did/{did}`         | DID 조회        |
+| POST   | `/identity/vc`                | VC 발급         |
+| GET    | `/identity/vc/{vc_id}/verify` | VC 검증         |
+| POST   | `/identity/vc/delegate`       | 에이전트 위임 VC 발급 |
+
 
 #### 🔗 Connector (EDC)
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/connector/register` | 커넥터 등록 |
-| GET | `/connector/list` | 커넥터 목록 |
-| POST | `/connector/negotiate` | 계약 협상 시작 |
-| POST | `/connector/data/register` | 데이터셋 등록 |
-| POST | `/connector/data/transfer` | 데이터 P2P 전송 |
+
+
+| Method | Path                       | 설명         |
+| ------ | -------------------------- | ---------- |
+| POST   | `/connector/register`      | 커넥터 등록     |
+| GET    | `/connector/list`          | 커넥터 목록     |
+| POST   | `/connector/negotiate`     | 계약 협상 시작   |
+| POST   | `/connector/data/register` | 데이터셋 등록    |
+| POST   | `/connector/data/transfer` | 데이터 P2P 전송 |
+
 
 #### 📋 Policy (ODRL)
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/policy/` | 정책 생성 |
-| GET | `/policy/` | 정책 목록 |
-| POST | `/policy/evaluate` | 정책 평가 |
+
+
+| Method | Path               | 설명    |
+| ------ | ------------------ | ----- |
+| POST   | `/policy/`         | 정책 생성 |
+| GET    | `/policy/`         | 정책 목록 |
+| POST   | `/policy/evaluate` | 정책 평가 |
+
 
 #### 📝 Contract
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/contract/` | 계약 생성 |
-| POST | `/contract/{id}/sign` | 계약 서명 |
-| GET | `/contract/{id}/verify` | 계약 검증 |
+
+
+| Method | Path                    | 설명    |
+| ------ | ----------------------- | ----- |
+| POST   | `/contract/`            | 계약 생성 |
+| POST   | `/contract/{id}/sign`   | 계약 서명 |
+| GET    | `/contract/{id}/verify` | 계약 검증 |
+
 
 #### 🏷️ Metadata
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/metadata/extract` | 메타데이터 추출/저장 |
-| GET | `/metadata/` | 데이터셋 카탈로그 |
-| POST | `/metadata/ontology/map` | 온톨로지 매핑 |
-| GET | `/metadata/ontology/concepts` | 온톨로지 개념 목록 |
+
+
+| Method | Path                          | 설명          |
+| ------ | ----------------------------- | ----------- |
+| POST   | `/metadata/extract`           | 메타데이터 추출/저장 |
+| GET    | `/metadata/`                  | 데이터셋 카탈로그   |
+| POST   | `/metadata/ontology/map`      | 온톨로지 매핑     |
+| GET    | `/metadata/ontology/concepts` | 온톨로지 개념 목록  |
+
 
 #### 🤖 AI
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/ai/predict` | AI 예측 실행 |
-| GET | `/ai/models` | 모델 목록 |
-| GET | `/ai/models/{type}/metadata` | 모델 메타데이터 |
-| GET | `/ai/models/{type}/health` | 모델 상태 |
+
+
+| Method | Path                         | 설명       |
+| ------ | ---------------------------- | -------- |
+| POST   | `/ai/predict`                | AI 예측 실행 |
+| GET    | `/ai/models`                 | 모델 목록    |
+| GET    | `/ai/models/{type}/metadata` | 모델 메타데이터 |
+| GET    | `/ai/models/{type}/health`   | 모델 상태    |
+
 
 #### 🤖 Agent (Agentic AI)
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/agent/initialize` | 에이전트 초기화 |
-| POST | `/agent/delegate` | 권한 위임 |
-| POST | `/agent/auto-catalog` | 자동 카탈로그 생성 |
-| GET | `/agent/health` | 에이전트 상태 |
+
+
+| Method | Path                  | 설명         |
+| ------ | --------------------- | ---------- |
+| POST   | `/agent/initialize`   | 에이전트 초기화   |
+| POST   | `/agent/delegate`     | 권한 위임      |
+| POST   | `/agent/auto-catalog` | 자동 카탈로그 생성 |
+| GET    | `/agent/health`       | 에이전트 상태    |
+
 
 #### 🔍 Search
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/search/datasets` | 자연어 데이터셋 검색 |
-| GET | `/search/datasets?q={query}` | 키워드 검색 |
-| POST | `/search/ontology` | 온톨로지 기반 검색 |
+
+
+| Method | Path                         | 설명          |
+| ------ | ---------------------------- | ----------- |
+| POST   | `/search/datasets`           | 자연어 데이터셋 검색 |
+| GET    | `/search/datasets?q={query}` | 키워드 검색      |
+| POST   | `/search/ontology`           | 온톨로지 기반 검색  |
+
 
 #### 📊 Clearing House
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/clearinghouse/logs` | 전송 로그 조회 |
-| GET | `/clearinghouse/verify-chain` | 해시체인 무결성 검증 |
-| GET | `/clearinghouse/usage-report` | 사용량 정산 보고서 |
+
+
+| Method | Path                          | 설명          |
+| ------ | ----------------------------- | ----------- |
+| GET    | `/clearinghouse/logs`         | 전송 로그 조회    |
+| GET    | `/clearinghouse/verify-chain` | 해시체인 무결성 검증 |
+| GET    | `/clearinghouse/usage-report` | 사용량 정산 보고서  |
+
 
 ---
 
@@ -333,23 +342,27 @@ echo "Policy ID: $POLICY_ID"
 
 ## 표준 준수 사항
 
-| 표준 | 구현 내용 |
-|------|-----------|
-| **W3C DID Core 1.0** | `did:kmx:` 메서드, DID Document 구조 |
-| **W3C VC Data Model 1.1** | VC 발급/검증, Ed25519 서명 |
-| **ODRL 2.2** | Permission/Prohibition/Obligation, ODRL JSON-LD |
-| **DCAT 2** | 데이터셋 메타데이터, Distribution 구조 |
-| **IDS-RAM** | Control/Data Plane 분리, Contract 협상 프로토콜 |
-| **ISO 62443** | 산업 사이버보안 (아키텍처 반영) |
+
+| 표준                        | 구현 내용                                           |
+| ------------------------- | ----------------------------------------------- |
+| **W3C DID Core 1.0**      | `did:kmx:` 메서드, DID Document 구조                 |
+| **W3C VC Data Model 1.1** | VC 발급/검증, Ed25519 서명                            |
+| **ODRL 2.2**              | Permission/Prohibition/Obligation, ODRL JSON-LD |
+| **DCAT 2**                | 데이터셋 메타데이터, Distribution 구조                     |
+| **IDS-RAM**               | Control/Data Plane 분리, Contract 협상 프로토콜         |
+| **ISO 62443**             | 산업 사이버보안 (아키텍처 반영)                              |
+
 
 ---
 
 ## 환경 변수
 
-| 변수 | 기본값 | 설명 |
-|------|--------|------|
-| `DATABASE_URL` | `sqlite+aiosqlite:///./kmx_platform.db` | DB 연결 문자열 |
-| `CONNECTOR_ID` | 자동생성 | 이 인스턴스의 커넥터 ID |
+
+| 변수             | 기본값                                     | 설명             |
+| -------------- | --------------------------------------- | -------------- |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./kmx_platform.db` | DB 연결 문자열      |
+| `CONNECTOR_ID` | 자동생성                                    | 이 인스턴스의 커넥터 ID |
+
 
 ---
 

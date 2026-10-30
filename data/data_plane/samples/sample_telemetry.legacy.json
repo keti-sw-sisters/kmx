@@ -1,0 +1,13 @@
+[
+  {
+    "record_id": "legacy-telemetry-0001",
+    "produced_at": "2026-04-29T00:00:00Z",
+    "robot_id": "cobot-legacy-01",
+    "station_id": "station-legacy-01",
+    "temperature_c": 45.2,
+    "vibration_mm_s": 1.8,
+    "power_watts": 430.0,
+    "status": "RUNNING",
+    "alarms": []
+  }
+]
